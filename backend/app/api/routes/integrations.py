@@ -83,6 +83,36 @@ async def connect_garmin(
     return IntegrationStatusOut(provider="garmin", status=cred.status)
 
 
+@router.get("/garmin/debug")
+async def garmin_debug(
+    date: str | None = None,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Diagnostic: return the raw Garmin wellness responses for a day.
+
+    Helps map fields when a metric (sleep/HRV/steps) isn't populating. Defaults to
+    yesterday. Requires a connected Garmin account.
+    """
+    import asyncio
+    from datetime import date as date_cls, timedelta
+
+    cred = await db.scalar(
+        select(IntegrationCredential).where(
+            IntegrationCredential.user_id == current.id, IntegrationCredential.provider == "garmin"
+        )
+    )
+    if not cred:
+        raise HTTPException(status_code=400, detail="Garmin is not connected")
+    day = date_cls.fromisoformat(date) if date else date_cls.today() - timedelta(days=1)
+    try:
+        payload = decrypt_json(cred.encrypted_payload)
+        client = await asyncio.to_thread(GarminClient.from_payload, payload)
+        return await asyncio.to_thread(client.debug_wellness, day)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=f"Garmin debug failed: {exc}") from exc
+
+
 @router.delete("/{provider}", status_code=204, response_class=Response)
 async def disconnect(
     provider: str,

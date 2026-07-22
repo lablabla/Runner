@@ -119,23 +119,48 @@ class GarminClient:
         hrv = safe(self._api.get_hrv_data, iso) or {}
         bb = safe(self._api.get_body_battery, iso) or []
         readiness = safe(self._api.get_training_readiness, iso)
+        steps_data = safe(getattr(self._api, "get_steps_data", None), iso) if hasattr(
+            self._api, "get_steps_data"
+        ) else None
 
         daily_sleep = (sleep or {}).get("dailySleepDTO", {}) if isinstance(sleep, dict) else {}
+        # Garmin's summary/sleep payloads vary by device/firmware, so try several
+        # known key spellings and fall back to the dedicated endpoints.
         out.update(
             {
-                "steps": stats.get("totalSteps"),
-                "resting_hr": stats.get("restingHeartRate") or _rhr_value(rhr),
-                "stress_avg": stats.get("averageStressLevel"),
-                "sleep_seconds": daily_sleep.get("sleepTimeSeconds"),
-                "sleep_score": _sleep_score(daily_sleep),
+                "steps": _first(stats, "totalSteps", "steps") or _steps_from(steps_data),
+                "resting_hr": _first(stats, "restingHeartRate") or _rhr_value(rhr),
+                "stress_avg": _first(stats, "averageStressLevel", "avgStressLevel"),
+                "sleep_seconds": _first(daily_sleep, "sleepTimeSeconds")
+                or _first(stats, "sleepingSeconds"),
+                "sleep_score": _sleep_score(daily_sleep) or _sleep_score(sleep),
                 "hrv_overnight": _hrv_value(hrv),
-                "body_battery_high": _bb_high(bb),
-                "body_battery_low": _bb_low(bb),
+                "body_battery_high": _first(stats, "bodyBatteryHighestValue") or _bb_high(bb),
+                "body_battery_low": _first(stats, "bodyBatteryLowestValue") or _bb_low(bb),
                 "training_readiness": _readiness_score(readiness),
-                "raw": {"stats": stats},
+                "raw": {"stats_keys": sorted(stats.keys()) if isinstance(stats, dict) else None},
             }
         )
         return out
+
+    def debug_wellness(self, day: date) -> dict[str, Any]:
+        """Return the raw Garmin responses for a day (lists truncated) for mapping."""
+        iso = day.isoformat()
+        methods = [
+            "get_stats", "get_user_summary", "get_sleep_data", "get_hrv_data",
+            "get_body_battery", "get_rhr_day", "get_training_readiness", "get_steps_data",
+        ]
+        result: dict[str, Any] = {"date": iso}
+        for name in methods:
+            fn = getattr(self._api, name, None)
+            if fn is None:
+                result[name] = "(method not available in this garminconnect version)"
+                continue
+            try:
+                result[name] = _truncate(fn(iso))
+            except Exception as exc:  # noqa: BLE001
+                result[name] = f"ERROR: {type(exc).__name__}: {exc}"
+        return result
 
 
 # --- token store helpers (garth writes two files in a directory) ---------
@@ -178,15 +203,59 @@ def _rhr_value(rhr: dict) -> float | None:
         return None
 
 
-def _sleep_score(daily_sleep: dict) -> float | None:
-    scores = daily_sleep.get("sleepScores") or {}
-    overall = scores.get("overall") or {}
-    return overall.get("value")
+def _first(d: Any, *keys: str) -> Any:
+    """Return the first non-None value among the given keys of a dict."""
+    if not isinstance(d, dict):
+        return None
+    for k in keys:
+        v = d.get(k)
+        if v is not None:
+            return v
+    return None
 
 
-def _hrv_value(hrv: dict) -> float | None:
-    summary = (hrv or {}).get("hrvSummary") or {}
-    return summary.get("lastNightAvg")
+def _steps_from(steps_data: Any) -> int | None:
+    """get_steps_data returns a list of intraday buckets; sum their step counts."""
+    if not isinstance(steps_data, list):
+        return None
+    total = 0
+    found = False
+    for b in steps_data:
+        if isinstance(b, dict) and b.get("steps") is not None:
+            total += b["steps"]
+            found = True
+    return total if found else None
+
+
+def _sleep_score(sleep_obj: Any) -> float | None:
+    """Find a sleep score whether passed the dailySleepDTO or the whole payload."""
+    if not isinstance(sleep_obj, dict):
+        return None
+    candidates = [sleep_obj, sleep_obj.get("dailySleepDTO") or {}]
+    for c in candidates:
+        scores = (c or {}).get("sleepScores") or {}
+        overall = scores.get("overall") or {}
+        if overall.get("value") is not None:
+            return overall.get("value")
+    return None
+
+
+def _hrv_value(hrv: Any) -> float | None:
+    if not isinstance(hrv, dict):
+        return None
+    summary = hrv.get("hrvSummary") or {}
+    return summary.get("lastNightAvg") or summary.get("weeklyAvg")
+
+
+def _truncate(obj: Any, _depth: int = 0) -> Any:
+    """Shrink Garmin responses for the debug endpoint (cap list length & recursion)."""
+    if _depth > 4:
+        return "…"
+    if isinstance(obj, dict):
+        return {k: _truncate(v, _depth + 1) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_truncate(x, _depth + 1) for x in obj[:2]] + (["…"] if len(obj) > 2 else [])
+    return obj
 
 
 def _bb_high(bb: list) -> float | None:
