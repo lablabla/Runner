@@ -3,11 +3,17 @@ from __future__ import annotations
 
 from app.config import settings
 from app.llm.base import DisabledProvider, LLMProvider
-from app.llm.providers import AnthropicProvider, OllamaProvider, OpenAIProvider
+from app.llm.providers import (
+    AnthropicProvider,
+    GeminiProvider,
+    OllamaProvider,
+    OpenAIProvider,
+)
 
 _REGISTRY = {
     "anthropic": AnthropicProvider,
     "openai": OpenAIProvider,
+    "gemini": GeminiProvider,
     "ollama": OllamaProvider,
 }
 
@@ -26,6 +32,8 @@ def build_provider(config: dict | None = None) -> LLMProvider:
         return AnthropicProvider(model, api_key=config.get("api_key") or settings.anthropic_api_key)
     if provider == "openai":
         return OpenAIProvider(model, api_key=config.get("api_key") or settings.openai_api_key)
+    if provider == "gemini":
+        return GeminiProvider(model, api_key=config.get("api_key") or settings.gemini_api_key)
     if provider == "ollama":
         return OllamaProvider(model, base_url=config.get("base_url") or settings.ollama_base_url)
     return DisabledProvider(model)

@@ -41,11 +41,15 @@ class Settings(BaseSettings):
     open_meteo_forecast_url: str = "https://api.open-meteo.com/v1/forecast"
 
     # --- LLM (pluggable) ---
-    llm_provider: str = "none"  # none | anthropic | openai | ollama
+    llm_provider: str = "none"  # none | anthropic | openai | gemini | ollama
     llm_model: str = "claude-opus-4-8"
     anthropic_api_key: str = ""
     openai_api_key: str = ""
+    gemini_api_key: str = ""
     ollama_base_url: str = "http://ollama:11434"
+
+    # Week boundary for "this week" / weekly volume grouping: "monday" or "sunday".
+    week_starts_on: str = "monday"
 
     # --- Sync scheduling ---
     sync_hour_utc: int = 3  # nightly full sync

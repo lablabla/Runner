@@ -40,6 +40,27 @@ class OpenAIProvider(LLMProvider):
         return resp.choices[0].message.content or ""
 
 
+class GeminiProvider(LLMProvider):
+    """Google Gemini via its OpenAI-compatible endpoint (reuses the openai client)."""
+
+    name = "gemini"
+    BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+
+    async def generate(self, system: str, prompt: str, max_tokens: int = 1024) -> str:
+        from openai import AsyncOpenAI
+
+        client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url or self.BASE_URL)
+        resp = await client.chat.completions.create(
+            model=self.model,
+            max_tokens=max_tokens,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt},
+            ],
+        )
+        return resp.choices[0].message.content or ""
+
+
 class OllamaProvider(LLMProvider):
     """Local model served by Ollama on the Pi (no API key, runs offline)."""
 

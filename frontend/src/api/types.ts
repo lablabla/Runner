@@ -56,12 +56,24 @@ export interface ACWR {
   zone: string;
 }
 
+export interface Recovery {
+  date: string | null;
+  sleep_seconds: number | null;
+  sleep_score: number | null;
+  resting_hr: number | null;
+  hrv_overnight: number | null;
+  body_battery_high: number | null;
+  stress_avg: number | null;
+  steps: number | null;
+}
+
 export interface Summary {
   total_runs: number;
   total_distance_km: number;
   this_week_km: number;
   acwr: ACWR;
   latest_readiness: number | null;
+  recovery: Recovery | Record<string, never>;
 }
 
 export interface Trends {

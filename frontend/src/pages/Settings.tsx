@@ -15,6 +15,7 @@ const LLM_PROVIDERS = [
   { value: "none", label: "Disabled" },
   { value: "anthropic", label: "Anthropic Claude" },
   { value: "openai", label: "OpenAI" },
+  { value: "gemini", label: "Google Gemini" },
   { value: "ollama", label: "Ollama (local)" },
 ];
 

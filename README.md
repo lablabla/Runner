@@ -181,7 +181,7 @@ http://<pi-ip>:8080          e.g. http://192.168.1.50:8080
 | **Strava** | Official OAuth2 | Optional. Needs `STRAVA_CLIENT_ID/SECRET`. Personal-use only per Strava's API terms. |
 | **Runna** | via Garmin/Strava + PDF | No public API. Completed Runna runs are auto-tagged; import the forward plan from a PDF or add it manually. |
 | **Weather** | Open-Meteo | Free, keyless. Historical archive for past runs, forecast for the plan. |
-| **LLM** | Claude / OpenAI / Ollama | Pluggable; configured per-user in Settings or globally via env. |
+| **LLM** | Claude / OpenAI / Gemini / Ollama | Pluggable; configured per-user in Settings or globally via env. |
 
 **Heads-up on Garmin:** `python-garminconnect` is community-maintained and can
 break temporarily if Garmin changes their login flow. It's isolated in
@@ -195,6 +195,13 @@ if that happens.
 All settings live in `.env` (see `.env.example`). Required: `JWT_SECRET`,
 `ENCRYPTION_KEY`, `POSTGRES_PASSWORD`, `PUBLIC_BASE_URL`, and `TUNNEL_TOKEN` (for
 internet access). Everything else is optional.
+
+- **`WEEK_STARTS_ON`** — `monday` (default, ISO / Runna weeks) or `sunday`. Controls
+  the "This week" tile and the weekly-volume chart grouping. Only running activities
+  count toward mileage (swims/rides are excluded).
+- **LLM** — set `LLM_PROVIDER` to `anthropic`, `openai`, `gemini`, or `ollama` and the
+  matching key (`ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY`), or configure
+  it per-user in Settings. Gemini uses its OpenAI-compatible endpoint.
 
 ## Development
 

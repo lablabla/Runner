@@ -49,9 +49,22 @@ def test_aerobic_efficiency_returns_series():
 
 
 def test_summary_stats_shape():
-    acts = [_mk(1, 10), _mk(3, 8)]
-    daily = [{"date": datetime.now(timezone.utc).date(), "sleep_score": 80, "body_battery_high": 90, "training_readiness": 75}]
+    # Include a run today so "this week" is non-empty regardless of week-start config.
+    acts = [_mk(0, 10), _mk(3, 8)]
+    daily = [{"date": datetime.now(timezone.utc).date(), "sleep_score": 80, "sleep_seconds": 27000, "body_battery_high": 90, "training_readiness": 75}]
     stats = trends.summary_stats(acts, daily)
     assert stats["total_runs"] == 2
-    assert stats["this_week_km"] > 0
+    assert stats["total_distance_km"] > 0
+    assert stats["this_week_km"] > 0  # today's run is always in the current week
     assert "acwr" in stats
+    assert stats["recovery"]["sleep_score"] == 80
+
+
+def test_mileage_excludes_non_runs():
+    swim = _mk(0, 2)
+    swim["sport_type"] = "lap_swimming"
+    run = _mk(0, 5)
+    run["sport_type"] = "running"
+    stats = trends.summary_stats([swim, run], [])
+    assert stats["total_runs"] == 1  # swim excluded from run count/mileage
+    assert abs(stats["this_week_km"] - 5.0) < 0.01

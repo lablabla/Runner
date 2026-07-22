@@ -35,7 +35,9 @@ services:
       LLM_MODEL: ${LLM_MODEL:-claude-opus-4-8}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      WEEK_STARTS_ON: ${WEEK_STARTS_ON:-monday}
     expose:
       - "8000"
 
@@ -57,6 +59,8 @@ services:
       LLM_MODEL: ${LLM_MODEL:-claude-opus-4-8}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      WEEK_STARTS_ON: ${WEEK_STARTS_ON:-monday}
       SYNC_HOUR_UTC: ${SYNC_HOUR_UTC:-3}
       FORECAST_HOUR_UTC: ${FORECAST_HOUR_UTC:-5}
 

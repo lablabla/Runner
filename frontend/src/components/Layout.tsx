@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { useSync } from "../api/hooks";
@@ -25,6 +26,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { mode, cycle } = useTheme();
   const navigate = useNavigate();
   const sync = useSync();
+
+  // Show a success toast for a few seconds after a sync completes cleanly.
+  const [showDone, setShowDone] = useState(false);
+  useEffect(() => {
+    if (sync.isSuccess && sync.data.errors.length === 0) {
+      setShowDone(true);
+      const t = setTimeout(() => setShowDone(false), 6000);
+      return () => clearTimeout(t);
+    }
+  }, [sync.isSuccess, sync.data]);
 
   return (
     <div className="min-h-full pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
@@ -86,6 +97,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {sync.isSuccess && sync.data.errors.length > 0 && (
           <div className="px-4 pb-2 text-xs" style={{ color: "var(--status-warning)" }}>
             Sync completed with issues: {sync.data.errors.join("; ")}
+          </div>
+        )}
+        {showDone && sync.data && (
+          <div className="px-4 pb-2 text-xs" style={{ color: "var(--status-good)" }}>
+            ✓ Sync complete — {sync.data.activities_added} new, {sync.data.activities_updated} updated,{" "}
+            {sync.data.daily_metrics_upserted} day(s) of health data, {sync.data.weather_enriched} weather.
           </div>
         )}
       </header>
