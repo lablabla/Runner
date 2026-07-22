@@ -59,11 +59,15 @@ async def generate_weekly_summary(
 
     stats = trends.summary_stats(activities, daily)
     weekly = trends.weekly_mileage(activities)
+    efficiency = trends.aerobic_efficiency(activities)
     sleep_perf = trends.sleep_vs_performance(activities, daily)
+    recovery = stats.get("recovery") or {}
 
-    prompt = weekly_summary_prompt(stats, weekly, sleep_perf)
+    prompt = weekly_summary_prompt(stats, weekly, efficiency, sleep_perf, activities, recovery)
     try:
-        content = await provider.generate(SYSTEM, prompt)
+        # Generous ceiling: "thinking" models (e.g. Gemini flash) spend part of the
+        # budget on reasoning, so a low cap truncates the visible answer.
+        content = await provider.generate(SYSTEM, prompt, max_tokens=8192)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -131,7 +135,7 @@ async def analyse_activity(
 
     prompt = activity_prompt(activity_dict, day_dict, weather_dict)
     try:
-        content = await provider.generate(SYSTEM, prompt, max_tokens=512)
+        content = await provider.generate(SYSTEM, prompt, max_tokens=4096)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
