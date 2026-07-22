@@ -13,6 +13,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.core.crypto import decrypt_json, encrypt_json
@@ -177,9 +178,14 @@ async def _enrich_and_score(db: AsyncSession, user: User, result: dict) -> None:
         select(Activity.max_hr).where(Activity.user_id == user.id).order_by(Activity.max_hr.desc())
     )
 
+    # Eager-load weather: async SQLAlchemy forbids the lazy load that
+    # `act.weather` would otherwise trigger (raises MissingGreenlet).
     activities = (
         await db.scalars(
-            select(Activity).where(Activity.user_id == user.id).order_by(Activity.start_time.desc())
+            select(Activity)
+            .where(Activity.user_id == user.id)
+            .options(selectinload(Activity.weather))
+            .order_by(Activity.start_time.desc())
         )
     ).all()
 
