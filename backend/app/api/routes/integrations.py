@@ -3,7 +3,7 @@ from __future__ import annotations
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -83,12 +83,12 @@ async def connect_garmin(
     return IntegrationStatusOut(provider="garmin", status=cred.status)
 
 
-@router.delete("/{provider}", status_code=204)
+@router.delete("/{provider}", status_code=204, response_class=Response)
 async def disconnect(
     provider: str,
     current: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> None:
+):
     cred = await db.scalar(
         select(IntegrationCredential).where(
             IntegrationCredential.user_id == current.id, IntegrationCredential.provider == provider

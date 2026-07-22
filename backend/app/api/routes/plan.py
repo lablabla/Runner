@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -65,12 +66,12 @@ async def update_workout(
     return workout
 
 
-@router.delete("/{workout_id}", status_code=204)
+@router.delete("/{workout_id}", status_code=204, response_class=Response)
 async def delete_workout(
     workout_id: int,
     current: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> None:
+):
     workout = await db.scalar(
         select(PlannedWorkout).where(
             PlannedWorkout.id == workout_id, PlannedWorkout.user_id == current.id
