@@ -9,6 +9,7 @@ asyncpg==0.30.0
 alembic==1.14.0
 pydantic==2.10.4
 pydantic-settings==2.7.0
+email-validator==2.2.0  # required by pydantic EmailStr (auth schemas)
 
 # Auth / crypto
 passlib[argon2]==1.7.4
