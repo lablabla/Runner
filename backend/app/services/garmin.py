@@ -117,7 +117,14 @@ class GarminClient:
         # steps, resting HR, stress, sleep duration and Body Battery — confirmed
         # against a Forerunner 245. Sleep score and HRV need their own endpoints
         # and may be absent on some devices; they're best-effort extras.
-        stats = safe(self._api.get_stats, iso) or {}
+        # Capture (don't swallow) the get_stats error so the sync can report why
+        # wellness is empty.
+        stats_error: str | None = None
+        try:
+            stats = self._api.get_stats(iso) or {}
+        except Exception as exc:  # noqa: BLE001
+            stats = {}
+            stats_error = f"{type(exc).__name__}: {exc}"
         sleep = safe(self._api.get_sleep_data, iso) or {}
         hrv = safe(getattr(self._api, "get_hrv_data", None), iso) or {}
         readiness = safe(getattr(self._api, "get_training_readiness", None), iso)
@@ -135,6 +142,7 @@ class GarminClient:
                 "body_battery_high": _first(stats, "bodyBatteryHighestValue"),
                 "body_battery_low": _first(stats, "bodyBatteryLowestValue"),
                 "training_readiness": _readiness_score(readiness),
+                "_stats_error": stats_error,
             }
         )
         return out

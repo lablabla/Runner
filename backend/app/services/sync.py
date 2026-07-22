@@ -98,10 +98,25 @@ async def _sync_garmin(db: AsyncSession, user: User, since: date, result: dict) 
         # Throttle slightly between days so Garmin doesn't rate-limit the loop —
         # that throttling is what previously left most days without wellness data.
         wellness_start = max(since, date.today() - timedelta(days=60))
+        days_total = 0
+        days_with_steps = 0
+        first_stats_error: str | None = None
         for day in _date_range(wellness_start, date.today()):
             data = await asyncio.to_thread(client.get_daily_wellness, day)
+            days_total += 1
+            if data.get("steps") is not None:
+                days_with_steps += 1
+            if first_stats_error is None and data.get("_stats_error"):
+                first_stats_error = data["_stats_error"]
             await _upsert_daily_metric(db, user.id, day, data, result)
             await asyncio.sleep(0.25)
+
+        # Report wellness capture so a sparse result is visible, not silent.
+        if days_total and days_with_steps < days_total:
+            note = f"garmin wellness: {days_with_steps}/{days_total} days captured"
+            if first_stats_error:
+                note += f"; first get_stats error: {first_stats_error}"
+            result["errors"].append(note)
 
         await _mark(db, cred, "connected", None)
     except GarminAuthError as exc:
