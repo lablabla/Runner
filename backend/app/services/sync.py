@@ -95,10 +95,13 @@ async def _sync_garmin(db: AsyncSession, user: User, since: date, result: dict) 
                 await _upsert_activity(db, user.id, norm, result)
 
         # Daily wellness for the recent window (last 60 days to bound API calls).
+        # Throttle slightly between days so Garmin doesn't rate-limit the loop —
+        # that throttling is what previously left most days without wellness data.
         wellness_start = max(since, date.today() - timedelta(days=60))
         for day in _date_range(wellness_start, date.today()):
             data = await asyncio.to_thread(client.get_daily_wellness, day)
             await _upsert_daily_metric(db, user.id, day, data, result)
+            await asyncio.sleep(0.25)
 
         await _mark(db, cred, "connected", None)
     except GarminAuthError as exc:

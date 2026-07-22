@@ -113,32 +113,28 @@ class GarminClient:
             except Exception:  # noqa: BLE001 - individual endpoints can be flaky
                 return None
 
+        # get_stats (the daily user summary) is the reliable one-shot source for
+        # steps, resting HR, stress, sleep duration and Body Battery — confirmed
+        # against a Forerunner 245. Sleep score and HRV need their own endpoints
+        # and may be absent on some devices; they're best-effort extras.
         stats = safe(self._api.get_stats, iso) or {}
         sleep = safe(self._api.get_sleep_data, iso) or {}
-        rhr = safe(self._api.get_rhr_day, iso) or {}
-        hrv = safe(self._api.get_hrv_data, iso) or {}
-        bb = safe(self._api.get_body_battery, iso) or []
-        readiness = safe(self._api.get_training_readiness, iso)
-        steps_data = safe(getattr(self._api, "get_steps_data", None), iso) if hasattr(
-            self._api, "get_steps_data"
-        ) else None
+        hrv = safe(getattr(self._api, "get_hrv_data", None), iso) or {}
+        readiness = safe(getattr(self._api, "get_training_readiness", None), iso)
 
         daily_sleep = (sleep or {}).get("dailySleepDTO", {}) if isinstance(sleep, dict) else {}
-        # Garmin's summary/sleep payloads vary by device/firmware, so try several
-        # known key spellings and fall back to the dedicated endpoints.
         out.update(
             {
-                "steps": _first(stats, "totalSteps", "steps") or _steps_from(steps_data),
-                "resting_hr": _first(stats, "restingHeartRate") or _rhr_value(rhr),
-                "stress_avg": _first(stats, "averageStressLevel", "avgStressLevel"),
+                "steps": _first(stats, "totalSteps", "steps"),
+                "resting_hr": _first(stats, "restingHeartRate"),
+                "stress_avg": _first(stats, "averageStressLevel"),
                 "sleep_seconds": _first(daily_sleep, "sleepTimeSeconds")
                 or _first(stats, "sleepingSeconds"),
-                "sleep_score": _sleep_score(daily_sleep) or _sleep_score(sleep),
+                "sleep_score": _sleep_score(sleep),
                 "hrv_overnight": _hrv_value(hrv),
-                "body_battery_high": _first(stats, "bodyBatteryHighestValue") or _bb_high(bb),
-                "body_battery_low": _first(stats, "bodyBatteryLowestValue") or _bb_low(bb),
+                "body_battery_high": _first(stats, "bodyBatteryHighestValue"),
+                "body_battery_low": _first(stats, "bodyBatteryLowestValue"),
                 "training_readiness": _readiness_score(readiness),
-                "raw": {"stats_keys": sorted(stats.keys()) if isinstance(stats, dict) else None},
             }
         )
         return out
