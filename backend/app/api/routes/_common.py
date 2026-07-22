@@ -37,11 +37,14 @@ async def load_daily_dicts(db: AsyncSession, user_id: int) -> list[dict]:
     return [
         {
             "date": m.date,
+            "sleep_seconds": m.sleep_seconds,
             "sleep_score": m.sleep_score,
             "body_battery_high": m.body_battery_high,
             "training_readiness": m.training_readiness,
             "resting_hr": m.resting_hr,
             "hrv_overnight": m.hrv_overnight,
+            "stress_avg": m.stress_avg,
+            "steps": m.steps,
         }
         for m in rows
     ]

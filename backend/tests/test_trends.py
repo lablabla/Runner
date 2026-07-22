@@ -51,13 +51,18 @@ def test_aerobic_efficiency_returns_series():
 def test_summary_stats_shape():
     # Include a run today so "this week" is non-empty regardless of week-start config.
     acts = [_mk(0, 10), _mk(3, 8)]
-    daily = [{"date": datetime.now(timezone.utc).date(), "sleep_score": 80, "sleep_seconds": 27000, "body_battery_high": 90, "training_readiness": 75}]
+    daily = [{"date": datetime.now(timezone.utc).date(), "sleep_score": 80, "sleep_seconds": 27000,
+              "body_battery_high": 90, "training_readiness": 75, "stress_avg": 40, "steps": 10643}]
     stats = trends.summary_stats(acts, daily)
     assert stats["total_runs"] == 2
     assert stats["total_distance_km"] > 0
     assert stats["this_week_km"] > 0  # today's run is always in the current week
     assert "acwr" in stats
+    # Recovery panel must surface all captured wellness fields, not just some.
     assert stats["recovery"]["sleep_score"] == 80
+    assert stats["recovery"]["sleep_seconds"] == 27000
+    assert stats["recovery"]["steps"] == 10643
+    assert stats["recovery"]["stress_avg"] == 40
 
 
 def test_mileage_excludes_non_runs():
