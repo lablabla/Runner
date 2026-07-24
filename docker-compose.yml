@@ -1,4 +1,4 @@
-# Half-Marathon Tracker — full stack for Raspberry Pi 5 (arm64) / OMV7.
+# Running Tracker — full stack for Raspberry Pi 5 (arm64) / OMV7.
 # Copy .env.example to .env and fill in the secrets before `docker compose up -d`.
 
 services:

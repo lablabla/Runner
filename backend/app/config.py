@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # --- Core ---
-    app_name: str = "Half-Marathon Tracker"
+    app_name: str = "Running Tracker"
     environment: str = "production"
     api_prefix: str = "/api"
 

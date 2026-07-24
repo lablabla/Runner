@@ -5,8 +5,8 @@ import json
 
 SYSTEM = (
     "You are an elite running coach analysing a runner's Garmin, weather and "
-    "training-load data as they prepare for a half marathon. Write like a sharp, "
-    "experienced coach talking to an athlete you respect.\n\n"
+    "training-load data as they work toward their running goals. Write like a "
+    "sharp, experienced coach talking to an athlete you respect.\n\n"
     "Rules:\n"
     "- Be specific and quantitative. Cite the actual numbers you were given "
     "(distances, paces, HR, ACWR, sleep). Never invent data you were not given; "
@@ -61,7 +61,7 @@ def weekly_summary_prompt(
         "latest_recovery": recovery or {},
     }
     return (
-        "Analyse this athlete's recent half-marathon training. Data as JSON "
+        "Analyse this athlete's recent running training. Data as JSON "
         "(nulls mean not recorded by the device):\n\n"
         f"{json.dumps(blocks, indent=2, default=str)}\n\n"
         "Write the weekly coaching summary: (1) the headline read on load and "

@@ -52,7 +52,7 @@ async def _ensure_user(db) -> User:
 
 
 def _weekly_plan(week: int) -> list[tuple[int, str, float]]:
-    """(weekday, type, distance_km) — a simple progressive half-marathon block."""
+    """(weekday, type, distance_km) — a simple progressive training block."""
     base_long = 10 + week * 1.1
     return [
         (1, "easy", 6),

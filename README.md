@@ -1,6 +1,6 @@
-# 🏃 Half-Marathon Training Tracker
+# 🏃 Running Tracker
 
-A self-hosted app to **track, visualize, and analyze** your half-marathon
+A self-hosted app to **track, visualize, and analyze** your running
 training. It pulls your runs and health data from **Garmin Connect** (and
 optionally **Strava**), enriches every run with **accurate weather**, computes a
 per-run **difficulty score**, surfaces **training-load and fitness trends**, and
@@ -99,7 +99,7 @@ and password (stored encrypted), then click **Sync now**.
 
 1. **Install Docker** on OMV7 (via the OMV-Extras "Compose" plugin, or
    `curl -fsSL https://get.docker.com | sh`). Put this repo in a shared folder,
-   e.g. `/srv/dev-disk-by-uuid-XXXX/appdata/hm-tracker`.
+   e.g. `/srv/dev-disk-by-uuid-XXXX/appdata/running-tracker`.
 
 2. **Create the Cloudflare Tunnel.** In the
    [Zero Trust dashboard](https://one.dash.cloudflare.com) → **Networks →

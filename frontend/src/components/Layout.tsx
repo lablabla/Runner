@@ -41,7 +41,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-full pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
       <header className="sticky top-0 z-20 border-b border-hairline bg-surface/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
-          <span className="whitespace-nowrap text-base font-semibold sm:text-lg">🏃 HM&nbsp;Tracker</span>
+          <span className="whitespace-nowrap text-base font-semibold sm:text-lg">🏃 Running&nbsp;Tracker</span>
 
           {/* Desktop primary nav */}
           <nav className="ml-2 hidden gap-1 md:flex">

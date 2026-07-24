@@ -30,7 +30,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm">
         <h1 className="mb-1 text-xl font-semibold">🏃 Sign in</h1>
-        <p className="mb-4 text-sm text-ink-secondary">Half-Marathon Tracker</p>
+        <p className="mb-4 text-sm text-ink-secondary">Running Tracker</p>
         <form onSubmit={submit} className="space-y-3">
           <Field label="Email" type="email" value={email} onChange={setEmail} />
           <Field label="Password" type="password" value={password} onChange={setPassword} />
