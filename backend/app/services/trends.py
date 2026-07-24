@@ -203,12 +203,13 @@ def summary_stats(activities: list[dict], daily: list[dict]) -> dict:
         recovery = {
             "date": ddf["date"].dropna().iloc[-1].strftime("%Y-%m-%d") if ddf["date"].notna().any() else None,
             "sleep_seconds": latest("sleep_seconds"),
-            "sleep_score": latest("sleep_score"),
             "resting_hr": latest("resting_hr"),
-            "hrv_overnight": latest("hrv_overnight"),
             "body_battery_high": latest("body_battery_high"),
             "stress_avg": latest("stress_avg"),
             "steps": latest("steps"),
+            "respiration_avg": latest("respiration_avg"),
+            "intensity_minutes": latest("intensity_minutes"),
+            "active_calories": latest("active_calories"),
         }
 
     return {

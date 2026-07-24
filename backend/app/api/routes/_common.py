@@ -34,17 +34,23 @@ async def load_daily_dicts(db: AsyncSession, user_id: int) -> list[dict]:
             select(DailyMetric).where(DailyMetric.user_id == user_id).order_by(DailyMetric.date)
         )
     ).all()
-    return [
-        {
-            "date": m.date,
-            "sleep_seconds": m.sleep_seconds,
-            "sleep_score": m.sleep_score,
-            "body_battery_high": m.body_battery_high,
-            "training_readiness": m.training_readiness,
-            "resting_hr": m.resting_hr,
-            "hrv_overnight": m.hrv_overnight,
-            "stress_avg": m.stress_avg,
-            "steps": m.steps,
-        }
-        for m in rows
-    ]
+    out = []
+    for m in rows:
+        raw = m.raw or {}
+        out.append(
+            {
+                "date": m.date,
+                "sleep_seconds": m.sleep_seconds,
+                "sleep_score": m.sleep_score,
+                "body_battery_high": m.body_battery_high,
+                "training_readiness": m.training_readiness,
+                "resting_hr": m.resting_hr,
+                "hrv_overnight": m.hrv_overnight,
+                "stress_avg": m.stress_avg,
+                "steps": m.steps,
+                "respiration_avg": raw.get("respiration_avg"),
+                "intensity_minutes": raw.get("intensity_minutes"),
+                "active_calories": raw.get("active_calories"),
+            }
+        )
+    return out

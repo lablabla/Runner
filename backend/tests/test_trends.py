@@ -59,7 +59,6 @@ def test_summary_stats_shape():
     assert stats["this_week_km"] > 0  # today's run is always in the current week
     assert "acwr" in stats
     # Recovery panel must surface all captured wellness fields, not just some.
-    assert stats["recovery"]["sleep_score"] == 80
     assert stats["recovery"]["sleep_seconds"] == 27000
     assert stats["recovery"]["steps"] == 10643
     assert stats["recovery"]["stress_avg"] == 40

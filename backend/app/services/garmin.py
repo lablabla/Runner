@@ -142,6 +142,13 @@ class GarminClient:
                 "body_battery_high": _first(stats, "bodyBatteryHighestValue"),
                 "body_battery_low": _first(stats, "bodyBatteryLowestValue"),
                 "training_readiness": _readiness_score(readiness),
+                # Extra FR245-available metrics kept in the raw JSON column (no
+                # schema migration): respiration, Garmin intensity minutes, kcal.
+                "raw": {
+                    "respiration_avg": _first(stats, "avgWakingRespirationValue"),
+                    "intensity_minutes": _intensity_minutes(stats),
+                    "active_calories": _first(stats, "activeKilocalories"),
+                },
                 "_stats_error": stats_error,
             }
         )
@@ -216,6 +223,17 @@ def _first(d: Any, *keys: str) -> Any:
         if v is not None:
             return v
     return None
+
+
+def _intensity_minutes(stats: Any) -> int | None:
+    """Garmin intensity minutes = moderate + 2×vigorous (the weekly-goal metric)."""
+    if not isinstance(stats, dict):
+        return None
+    mod = stats.get("moderateIntensityMinutes")
+    vig = stats.get("vigorousIntensityMinutes")
+    if mod is None and vig is None:
+        return None
+    return int((mod or 0) + 2 * (vig or 0))
 
 
 def _steps_from(steps_data: Any) -> int | None:

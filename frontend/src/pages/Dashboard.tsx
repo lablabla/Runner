@@ -45,7 +45,11 @@ export default function Dashboard() {
           sub={<Badge color={acwrColor(acwr?.zone ?? "", isDark)}>{acwr?.zone ?? "no data"}</Badge>}
           accent={acwrColor(acwr?.zone ?? "", isDark)}
         />
-        <StatTile label="Readiness" value={s?.latest_readiness != null ? num(s.latest_readiness, 0) : "–"} sub="latest" />
+        <StatTile
+          label="Body Battery"
+          value={s?.latest_readiness != null ? num(s.latest_readiness, 0) : "–"}
+          sub="latest high"
+        />
       </div>
 
       <RecoveryCard recovery={(s?.recovery as Recovery) ?? {}} />
@@ -100,11 +104,11 @@ function RecoveryCard({ recovery }: { recovery: Recovery | Record<string, never>
   const r = recovery as Recovery;
   const metrics = [
     { label: "Sleep", value: r.sleep_seconds != null ? hoursFromSeconds(r.sleep_seconds) : null },
-    { label: "Sleep score", value: r.sleep_score != null ? num(r.sleep_score, 0) : null },
     { label: "Resting HR", value: r.resting_hr != null ? `${num(r.resting_hr, 0)} bpm` : null },
-    { label: "HRV", value: r.hrv_overnight != null ? `${num(r.hrv_overnight, 0)} ms` : null },
     { label: "Body Battery", value: r.body_battery_high != null ? num(r.body_battery_high, 0) : null },
     { label: "Stress", value: r.stress_avg != null ? num(r.stress_avg, 0) : null },
+    { label: "Respiration", value: r.respiration_avg != null ? `${num(r.respiration_avg, 0)} br/min` : null },
+    { label: "Intensity min", value: r.intensity_minutes != null ? num(r.intensity_minutes, 0) : null },
     { label: "Steps", value: r.steps != null ? num(r.steps, 0) : null },
   ];
   const anyData = metrics.some((m) => m.value != null);
@@ -126,9 +130,7 @@ function RecoveryCard({ recovery }: { recovery: Recovery | Record<string, never>
         </div>
       ) : (
         <p className="text-sm text-ink-secondary">
-          No wellness data yet. It appears after a sync. Note: the Forerunner 245 doesn't report
-          Training Readiness or HRV status, but sleep, resting HR, Body Battery, stress and steps
-          should populate here.
+          No wellness data yet — it appears after a sync.
         </p>
       )}
     </Card>

@@ -59,12 +59,13 @@ export interface ACWR {
 export interface Recovery {
   date: string | null;
   sleep_seconds: number | null;
-  sleep_score: number | null;
   resting_hr: number | null;
-  hrv_overnight: number | null;
   body_battery_high: number | null;
   stress_avg: number | null;
   steps: number | null;
+  respiration_avg: number | null;
+  intensity_minutes: number | null;
+  active_calories: number | null;
 }
 
 export interface Summary {
