@@ -114,13 +114,20 @@ def acwr(activities: list[dict], as_of: date | None = None) -> dict:
 def aerobic_efficiency(activities: list[dict]) -> list[dict]:
     """Pace-per-heartbeat trend: lower pace (s/km) at a given HR over time == fitter.
 
-    We report an efficiency index = (avg_hr * avg_pace_s_per_km) / 1000 for runs with
-    both HR and pace; a downward trend indicates improving aerobic fitness.
+    Efficiency index = (avg_hr * avg_pace_s_per_km) / 1000 for runs with both HR and
+    pace; a downward trend indicates improving aerobic fitness. Restricted to running
+    activities within plausible ranges so a bad-GPS run or a mislabelled swim/walk
+    (tiny distance -> huge pace) can't blow up the scale.
     """
-    df = _activities_frame(activities)
+    df = _running(_activities_frame(activities))
     if df.empty:
         return []
-    mask = df["avg_hr"].notna() & df["avg_pace_s_per_km"].notna() & (df["avg_pace_s_per_km"] > 0)
+    mask = (
+        df["avg_hr"].notna()
+        & df["avg_pace_s_per_km"].notna()
+        & df["avg_pace_s_per_km"].between(150, 600)  # 2:30 – 10:00 /km
+        & df["avg_hr"].between(90, 210)
+    )
     df = df.loc[mask].sort_values("date")
     if df.empty:
         return []
@@ -132,25 +139,36 @@ def aerobic_efficiency(activities: list[dict]) -> list[dict]:
 
 
 def sleep_vs_performance(activities: list[dict], daily: list[dict]) -> list[dict]:
-    """Join each run's difficulty with the prior night's sleep score."""
-    adf = _activities_frame(activities)
+    """Join each run's difficulty with that day's sleep.
+
+    Uses sleep *duration* (hours) as the x-axis — it's universally available,
+    whereas a numeric sleep score isn't reported by every device (e.g. FR245).
+    """
+    adf = _running(_activities_frame(activities))
     if adf.empty or not daily:
         return []
     ddf = pd.DataFrame(daily)
     ddf["date"] = pd.to_datetime(ddf["date"]).dt.normalize()
-    ddf = ddf[["date", "sleep_score", "body_battery_high"]]
+    for col in ("sleep_seconds", "sleep_score", "body_battery_high"):
+        if col not in ddf:
+            ddf[col] = None
+    ddf["sleep_hours"] = pd.to_numeric(ddf["sleep_seconds"], errors="coerce") / 3600.0
 
-    adf = adf[["date", "difficulty_score", "avg_hr"]].dropna(subset=["difficulty_score"])
-    merged = adf.merge(ddf, on="date", how="inner").dropna(subset=["sleep_score"])
+    adf = adf[["date", "difficulty_score"]].dropna(subset=["difficulty_score"])
+    merged = adf.merge(
+        ddf[["date", "sleep_hours", "sleep_score", "body_battery_high"]], on="date", how="inner"
+    ).dropna(subset=["sleep_hours"])
     return [
         {
             "date": d.strftime("%Y-%m-%d"),
-            "sleep_score": round(float(s), 1),
+            "sleep_hours": round(float(h), 2),
+            "sleep_score": None if pd.isna(s) else round(float(s), 1),
             "difficulty_score": round(float(diff), 1),
             "body_battery_high": None if pd.isna(bb) else round(float(bb), 1),
         }
-        for d, s, diff, bb in zip(
-            merged["date"], merged["sleep_score"], merged["difficulty_score"], merged["body_battery_high"]
+        for d, h, s, diff, bb in zip(
+            merged["date"], merged["sleep_hours"], merged["sleep_score"],
+            merged["difficulty_score"], merged["body_battery_high"],
         )
     ]
 

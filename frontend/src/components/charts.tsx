@@ -56,13 +56,15 @@ export function ChartCard({
 }
 
 // Weekly training volume — magnitude, so one sequential hue (blue).
+// Capped to the most recent weeks so the axis stays readable.
 export function WeeklyMileageChart({ data }: { data: Trends["weekly_mileage"] }) {
   const { isDark } = useTheme();
   const t = chartTheme(isDark);
   if (!data.length) return <Empty />;
+  const recent = data.slice(-16);
   return (
     <ResponsiveContainer>
-      <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+      <BarChart data={recent} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
         <CartesianGrid stroke={t.grid} vertical={false} />
         <XAxis dataKey="week" tick={{ fill: t.text, fontSize: 11 }} tickLine={false} axisLine={{ stroke: t.axis }} />
         <YAxis tick={{ fill: t.text, fontSize: 11 }} tickLine={false} axisLine={false} />
@@ -135,13 +137,14 @@ export function SleepVsPerformanceChart({ data }: { data: Trends["sleep_vs_perfo
         <CartesianGrid stroke={t.grid} />
         <XAxis
           type="number"
-          dataKey="sleep_score"
+          dataKey="sleep_hours"
           name="Sleep"
-          domain={[0, 100]}
+          domain={[3, 10]}
+          tickCount={8}
           tick={{ fill: t.text, fontSize: 11 }}
           tickLine={false}
           axisLine={{ stroke: t.axis }}
-          label={{ value: "Sleep score", position: "insideBottom", offset: -2, fill: t.text, fontSize: 11 }}
+          label={{ value: "Sleep (hours)", position: "insideBottom", offset: -2, fill: t.text, fontSize: 11 }}
         />
         <YAxis
           type="number"
@@ -160,7 +163,7 @@ export function SleepVsPerformanceChart({ data }: { data: Trends["sleep_vs_perfo
               <TooltipBox
                 rows={[
                   ["Date", shortDate(payload[0].payload.date)],
-                  ["Sleep", String(payload[0].payload.sleep_score)],
+                  ["Sleep", `${payload[0].payload.sleep_hours} h`],
                   ["Difficulty", String(payload[0].payload.difficulty_score)],
                 ]}
               />

@@ -80,7 +80,7 @@ export interface Trends {
   weekly_mileage: { week: string; distance_km: number; duration_h: number; runs: number; avg_difficulty: number | null }[];
   acwr: ACWR;
   aerobic_efficiency: { date: string; efficiency_index: number }[];
-  sleep_vs_performance: { date: string; sleep_score: number; difficulty_score: number; body_battery_high: number | null }[];
+  sleep_vs_performance: { date: string; sleep_hours: number; sleep_score: number | null; difficulty_score: number; body_battery_high: number | null }[];
 }
 
 export interface PlannedWorkout {

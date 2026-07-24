@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from fastapi.responses import Response
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -47,6 +48,29 @@ async def list_insights(
         )
     ).all()
     return list(rows)
+
+
+@router.delete("/insights", status_code=204, response_class=Response)
+async def clear_insights(
+    current: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """Delete all of the current user's insights."""
+    await db.execute(delete(Insight).where(Insight.user_id == current.id))
+    await db.commit()
+
+
+@router.delete("/insights/{insight_id}", status_code=204, response_class=Response)
+async def delete_insight(
+    insight_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    row = await db.scalar(
+        select(Insight).where(Insight.id == insight_id, Insight.user_id == current.id)
+    )
+    if row:
+        await db.delete(row)
+        await db.commit()
 
 
 @router.post("/weekly-summary", response_model=InsightOut)

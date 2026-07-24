@@ -85,6 +85,22 @@ export function useGenerateWeeklySummary() {
   });
 }
 
+export function useClearInsights() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<void>("/analysis/insights", { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["insights"] }),
+  });
+}
+
+export function useDeleteInsight() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api<void>(`/analysis/insights/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["insights"] }),
+  });
+}
+
 export function useAnalyseActivity() {
   const qc = useQueryClient();
   return useMutation({
