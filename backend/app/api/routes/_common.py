@@ -17,9 +17,12 @@ async def load_activity_dicts(db: AsyncSession, user_id: int) -> list[dict]:
         {
             "id": a.id,
             "start_time": a.start_time,
+            "sport_type": a.sport_type,
             "distance_m": a.distance_m,
             "duration_s": a.duration_s,
             "avg_hr": a.avg_hr,
+            "max_hr": a.max_hr,
+            "avg_cadence": a.avg_cadence,
             "avg_pace_s_per_km": a.avg_pace_s_per_km,
             "training_load": a.training_load,
             "difficulty_score": a.difficulty_score,

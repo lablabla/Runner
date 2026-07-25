@@ -74,6 +74,8 @@ export interface Summary {
   this_week_km: number;
   acwr: ACWR;
   latest_readiness: number | null;
+  avg_hr_30d: number | null;
+  avg_cadence_30d: number | null;
   recovery: Recovery | Record<string, never>;
 }
 
@@ -81,6 +83,8 @@ export interface Trends {
   weekly_mileage: { week: string; distance_km: number; duration_h: number; runs: number; avg_difficulty: number | null }[];
   acwr: ACWR;
   aerobic_efficiency: { date: string; efficiency_index: number }[];
+  hr_cadence: { date: string; avg_hr: number | null; avg_cadence: number | null }[];
+  resting_hr: { date: string; resting_hr: number }[];
   sleep_vs_performance: { date: string; sleep_hours: number; sleep_score: number | null; difficulty_score: number; body_battery_high: number | null }[];
 }
 

@@ -23,7 +23,10 @@ def _activities_frame(activities: list[dict]) -> pd.DataFrame:
         )
     df = pd.DataFrame(activities)
     df["date"] = pd.to_datetime(df["start_time"]).dt.tz_localize(None).dt.normalize()
-    for col in ["distance_m", "duration_s", "avg_hr", "training_load", "difficulty_score", "avg_pace_s_per_km"]:
+    for col in [
+        "distance_m", "duration_s", "avg_hr", "max_hr", "avg_cadence",
+        "training_load", "difficulty_score", "avg_pace_s_per_km",
+    ]:
         if col not in df:
             df[col] = np.nan
         df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -138,6 +141,40 @@ def aerobic_efficiency(activities: list[dict]) -> list[dict]:
     ]
 
 
+def hr_cadence_trend(activities: list[dict]) -> list[dict]:
+    """Per-run average heart rate and cadence over time (running only)."""
+    df = _running(_activities_frame(activities)).sort_values("date")
+    if df.empty:
+        return []
+    out = []
+    for d, hr, cad in zip(df["date"], df["avg_hr"], df["avg_cadence"]):
+        if pd.isna(hr) and pd.isna(cad):
+            continue
+        out.append(
+            {
+                "date": d.strftime("%Y-%m-%d"),
+                "avg_hr": None if pd.isna(hr) else round(float(hr)),
+                "avg_cadence": None if pd.isna(cad) else round(float(cad)),
+            }
+        )
+    return out
+
+
+def resting_hr_trend(daily: list[dict]) -> list[dict]:
+    """Overnight resting HR over time (a downward trend suggests improving fitness)."""
+    if not daily:
+        return []
+    ddf = pd.DataFrame(daily)
+    ddf["date"] = pd.to_datetime(ddf["date"])
+    if "resting_hr" not in ddf:
+        return []
+    ddf = ddf.dropna(subset=["resting_hr"]).sort_values("date")
+    return [
+        {"date": d.strftime("%Y-%m-%d"), "resting_hr": round(float(v))}
+        for d, v in zip(ddf["date"], ddf["resting_hr"])
+    ]
+
+
 def sleep_vs_performance(activities: list[dict], daily: list[dict]) -> list[dict]:
     """Join each run's difficulty with that day's sleep.
 
@@ -183,6 +220,16 @@ def summary_stats(activities: list[dict], daily: list[dict]) -> dict:
     total_km = round(float(runs["distance_m"].sum()) / 1000.0, 1) if not runs.empty else 0.0
     week_km = round(float(this_week["distance_m"].sum()) / 1000.0, 1) if not this_week.empty else 0.0
 
+    # 30-day averages for HR and cadence.
+    def _avg_30d(col: str) -> float | None:
+        if runs.empty or col not in runs:
+            return None
+        recent = runs.loc[runs["date"] > pd.Timestamp(date.today()) - pd.Timedelta(days=30), col]
+        return round(float(recent.mean())) if recent.notna().any() else None
+
+    avg_hr_30d = _avg_30d("avg_hr")
+    avg_cadence_30d = _avg_30d("avg_cadence")
+
     latest_readiness = None
     recovery: dict = {}
     if daily:
@@ -218,5 +265,7 @@ def summary_stats(activities: list[dict], daily: list[dict]) -> dict:
         "this_week_km": week_km,
         "acwr": acwr(activities),
         "latest_readiness": latest_readiness,
+        "avg_hr_30d": avg_hr_30d,
+        "avg_cadence_30d": avg_cadence_30d,
         "recovery": recovery,
     }

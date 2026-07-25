@@ -126,6 +126,58 @@ export function EfficiencyChart({ data }: { data: Trends["aerobic_efficiency"] }
   );
 }
 
+// Reusable single-series line trend (HR, cadence, resting HR, …). One axis.
+export function LineTrend({
+  data,
+  dataKey,
+  unit = "",
+  domain = ["auto", "auto"],
+  seriesIndex = 0,
+}: {
+  data: { date: string }[];
+  dataKey: string;
+  unit?: string;
+  domain?: [number | "auto", number | "auto"];
+  seriesIndex?: number;
+}) {
+  const { isDark } = useTheme();
+  const t = chartTheme(isDark);
+  const points = data.filter((d) => (d as Record<string, unknown>)[dataKey] != null);
+  if (!points.length) return <Empty />;
+  const shaped = points.map((d) => ({ ...d, label: shortDate(d.date) }));
+  const color = t.series[seriesIndex] ?? t.series[0];
+  return (
+    <ResponsiveContainer>
+      <LineChart data={shaped} margin={{ top: 8, right: 8, bottom: 0, left: 4 }}>
+        <CartesianGrid stroke={t.grid} vertical={false} />
+        <XAxis dataKey="label" tick={{ fill: t.text, fontSize: 11 }} tickLine={false} axisLine={{ stroke: t.axis }} />
+        <YAxis tick={{ fill: t.text, fontSize: 11 }} tickLine={false} axisLine={false} domain={domain} width={44} />
+        <Tooltip
+          content={({ active, payload }) =>
+            active && payload?.length ? (
+              <TooltipBox
+                rows={[
+                  ["Date", String(payload[0].payload.label)],
+                  ["Value", `${payload[0].payload[dataKey]}${unit ? ` ${unit}` : ""}`],
+                ]}
+              />
+            ) : null
+          }
+        />
+        <Line
+          type="monotone"
+          dataKey={dataKey}
+          stroke={color}
+          strokeWidth={2}
+          dot={{ r: 2.5, fill: color, strokeWidth: 0 }}
+          activeDot={{ r: 5 }}
+          connectNulls
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
 // Sleep score vs run difficulty — relationship, single-series scatter.
 export function SleepVsPerformanceChart({ data }: { data: Trends["sleep_vs_performance"] }) {
   const { isDark } = useTheme();

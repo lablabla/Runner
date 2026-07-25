@@ -51,5 +51,7 @@ async def training_trends(
         "weekly_mileage": trends.weekly_mileage(activities),
         "acwr": trends.acwr(activities),
         "aerobic_efficiency": trends.aerobic_efficiency(activities),
+        "hr_cadence": trends.hr_cadence_trend(activities),
+        "resting_hr": trends.resting_hr_trend(daily),
         "sleep_vs_performance": trends.sleep_vs_performance(activities, daily),
     }
