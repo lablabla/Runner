@@ -2,15 +2,17 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 SYSTEM = (
     "You are an elite running coach analysing a runner's Garmin, weather and "
     "training-load data as they work toward their running goals. Write like a "
     "sharp, experienced coach talking to an athlete you respect.\n\n"
     "Rules:\n"
-    "- Be specific and quantitative. Cite the actual numbers you were given "
-    "(distances, paces, HR, ACWR, sleep). Never invent data you were not given; "
-    "if something important is missing, say so briefly.\n"
+    "- Only reference metrics that appear in the data provided. The data given is "
+    "the complete set available — do NOT mention, list, or speculate about any "
+    "metric that is absent (e.g. don't note that HRV, sleep score, or anything "
+    "else is 'missing' or 'not provided'). Never invent numbers.\n"
     "- Lead with what matters most (injury/overtraining risk, or the biggest "
     "positive signal), not generic praise. Skip filler like 'great job'.\n"
     "- Interpret, don't just restate: explain what the trend means for their "
@@ -23,15 +25,15 @@ SYSTEM = (
 )
 
 
-def _round_list(items: list[dict], keys: list[str]) -> list[dict]:
-    out = []
-    for it in items:
-        row = {}
-        for k in keys:
-            v = it.get(k)
-            row[k] = round(v, 2) if isinstance(v, float) else v
-        out.append(row)
-    return out
+def _clean(obj: Any) -> Any:
+    """Recursively drop null/empty values so the model never sees absent metrics."""
+    if isinstance(obj, dict):
+        cleaned = {k: _clean(v) for k, v in obj.items()}
+        return {k: v for k, v in cleaned.items() if v is not None and v != {} and v != []}
+    if isinstance(obj, list):
+        items = [_clean(v) for v in obj]
+        return [v for v in items if v is not None and v != {} and v != []]
+    return obj
 
 
 def weekly_summary_prompt(
@@ -48,21 +50,24 @@ def weekly_summary_prompt(
             "km": round((r.get("distance_m") or 0) / 1000.0, 2),
             "pace_s_per_km": r.get("avg_pace_s_per_km"),
             "avg_hr": r.get("avg_hr"),
+            "avg_cadence": r.get("avg_cadence"),
             "difficulty": r.get("difficulty_score"),
         }
         for r in recent[-8:]
     ]
-    blocks = {
-        "summary": stats,
-        "weekly_mileage_recent": weekly[-6:],
-        "aerobic_efficiency_recent": efficiency[-8:],
-        "sleep_vs_difficulty": sleep_perf[-8:],
-        "recent_runs": recent_rows,
-        "latest_recovery": recovery or {},
-    }
+    blocks = _clean(
+        {
+            "summary": stats,
+            "weekly_mileage_recent": weekly[-6:],
+            "aerobic_efficiency_recent": efficiency[-8:],
+            "sleep_vs_difficulty": sleep_perf[-8:],
+            "recent_runs": recent_rows,
+            "latest_recovery": recovery or {},
+        }
+    )
     return (
-        "Analyse this athlete's recent running training. Data as JSON "
-        "(nulls mean not recorded by the device):\n\n"
+        "Analyse this athlete's recent running training. The JSON below contains "
+        "every metric available — treat it as complete:\n\n"
         f"{json.dumps(blocks, indent=2, default=str)}\n\n"
         "Write the weekly coaching summary: (1) the headline read on load and "
         "recovery, with explicit ACWR risk framing; (2) how mileage, pace-at-HR "
@@ -72,11 +77,17 @@ def weekly_summary_prompt(
 
 
 def activity_prompt(activity: dict, day_metric: dict | None, weather: dict | None) -> str:
+    blocks = _clean(
+        {
+            "activity": activity,
+            "recovery_that_day": day_metric or {},
+            "weather_at_start": weather or {},
+        }
+    )
     return (
-        "Analyse this single run and explain how hard it was and why.\n\n"
-        f"Activity:\n{json.dumps(activity, indent=2, default=str)}\n\n"
-        f"That day's recovery metrics:\n{json.dumps(day_metric, indent=2, default=str)}\n\n"
-        f"Weather at start:\n{json.dumps(weather, indent=2, default=str)}\n\n"
+        "Analyse this single run and explain how hard it was and why. The JSON below "
+        "contains every metric available — treat it as complete:\n\n"
+        f"{json.dumps(blocks, indent=2, default=str)}\n\n"
         "In 4-6 sentences: explain the difficulty score's main drivers (intensity, "
         "heat, elevation, fatigue), whether the effort looks appropriate for the "
         "session, and one takeaway. Cite the actual numbers."
