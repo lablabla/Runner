@@ -76,7 +76,7 @@ export default function ActivityDetailPage() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold">Coach analysis</h3>
-            <p className="text-xs text-ink-secondary">Uses your configured LLM to explain this run.</p>
+            <p className="text-xs text-ink-secondary">An AI explanation of this run.</p>
           </div>
           <Button onClick={() => analyse.mutate(activityId)} disabled={analyse.isPending} variant="ghost">
             {analyse.isPending ? "Analysing…" : "Analyse run"}

@@ -10,29 +10,18 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user
 from app.api.routes._common import load_activity_dicts, load_daily_dicts
-from app.core.crypto import decrypt_json
 from app.database import get_db
 from app.llm.factory import build_provider
-from app.llm.prompts import SYSTEM, activity_prompt, weekly_summary_prompt
-from app.models import Activity, DailyMetric, Insight, IntegrationCredential, User
+from app.llm.prompts import SYSTEM, activity_prompt, format_pace, weekly_summary_prompt
+from app.models import Activity, DailyMetric, Insight, User
 from app.schemas.tracker import InsightOut
 from app.services import trends
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
 
-async def _llm_config(db: AsyncSession, user_id: int) -> dict | None:
-    cred = await db.scalar(
-        select(IntegrationCredential).where(
-            IntegrationCredential.user_id == user_id, IntegrationCredential.provider == "llm"
-        )
-    )
-    if not cred:
-        return None
-    try:
-        return decrypt_json(cred.encrypted_payload)
-    except Exception:  # noqa: BLE001
-        return None
+def _round(v, n=0):
+    return round(v, n) if isinstance(v, (int, float)) else None
 
 
 @router.get("/insights", response_model=list[InsightOut])
@@ -77,7 +66,7 @@ async def delete_insight(
 async def generate_weekly_summary(
     current: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ) -> Insight:
-    provider = build_provider(await _llm_config(db, current.id))
+    provider = build_provider()
     activities = await load_activity_dicts(db, current.id)
     daily = await load_daily_dicts(db, current.id)
 
@@ -119,38 +108,46 @@ async def analyse_activity(
     if not act:
         raise HTTPException(status_code=404, detail="Activity not found")
 
-    provider = build_provider(await _llm_config(db, current.id))
+    provider = build_provider()
     day_metric = await db.scalar(
         select(DailyMetric).where(
             DailyMetric.user_id == current.id, DailyMetric.date == act.start_time.date()
         )
     )
+    breakdown = {
+        k: (_round(v, 1) if isinstance(v, (int, float)) else v)
+        for k, v in (act.difficulty_breakdown or {}).items()
+        if k != "_weights"
+    }
     activity_dict = {
         "name": act.name,
         "start_time": act.start_time,
-        "distance_km": round((act.distance_m or 0) / 1000.0, 2),
-        "duration_min": round((act.duration_s or 0) / 60.0, 1),
-        "avg_hr": act.avg_hr,
-        "avg_pace_s_per_km": act.avg_pace_s_per_km,
-        "elevation_gain_m": act.elevation_gain_m,
-        "difficulty_score": act.difficulty_score,
-        "difficulty_breakdown": act.difficulty_breakdown,
+        "distance_km": round((act.distance_m or 0) / 1000.0, 1),
+        "duration_min": round((act.duration_s or 0) / 60.0, 0),
+        "avg_hr": _round(act.avg_hr),
+        "max_hr": _round(act.max_hr),
+        "avg_cadence": _round(act.avg_cadence),
+        "pace": format_pace(act.avg_pace_s_per_km),
+        "elevation_gain_m": _round(act.elevation_gain_m),
+        "difficulty_score": _round(act.difficulty_score, 1),
+        "difficulty_breakdown": breakdown,
     }
     day_dict = (
         {
-            "sleep_score": day_metric.sleep_score,
-            "body_battery_high": day_metric.body_battery_high,
-            "resting_hr": day_metric.resting_hr,
-            "hrv_overnight": day_metric.hrv_overnight,
+            "body_battery_high": _round(day_metric.body_battery_high),
+            "resting_hr": _round(day_metric.resting_hr),
+            "sleep_hours": _round((day_metric.sleep_seconds or 0) / 3600.0, 1) if day_metric.sleep_seconds else None,
+            "stress_avg": _round(day_metric.stress_avg),
         }
         if day_metric
         else None
     )
     weather_dict = (
         {
-            "temp_c": act.weather.temp_c,
-            "apparent_temp_c": act.weather.apparent_temp_c,
-            "humidity_pct": act.weather.humidity_pct,
+            "temp_c": _round(act.weather.temp_c),
+            "feels_like_c": _round(act.weather.apparent_temp_c),
+            "humidity_pct": _round(act.weather.humidity_pct),
+            "wind_kmh": _round(act.weather.wind_speed_kmh),
             "summary": act.weather.summary,
         }
         if act.weather

@@ -2,7 +2,6 @@ import { useState } from "react";
 
 import { api } from "../api/client";
 import {
-  useConfigureLLM,
   useConnectGarmin,
   useDisconnect,
   useIntegrations,
@@ -11,14 +10,6 @@ import {
 } from "../api/hooks";
 import { Badge, Button, Card, ErrorNote, Spinner } from "../components/ui";
 import { dateTime } from "../format";
-
-const LLM_PROVIDERS = [
-  { value: "none", label: "Disabled" },
-  { value: "anthropic", label: "Anthropic Claude" },
-  { value: "openai", label: "OpenAI" },
-  { value: "gemini", label: "Google Gemini" },
-  { value: "ollama", label: "Ollama (local)" },
-];
 
 function statusColor(status: string): string {
   if (status === "connected") return "var(--status-good)";
@@ -30,14 +21,10 @@ export default function SettingsPage() {
   const me = useMe();
   const integrations = useIntegrations();
   const connectGarmin = useConnectGarmin();
-  const configureLLM = useConfigureLLM();
   const disconnect = useDisconnect();
 
   const [gUser, setGUser] = useState("");
   const [gPass, setGPass] = useState("");
-  const [provider, setProvider] = useState("anthropic");
-  const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("claude-opus-4-8");
   const [stravaBusy, setStravaBusy] = useState(false);
 
   if (integrations.isLoading || me.isLoading) return <Spinner />;
@@ -128,54 +115,6 @@ export default function SettingsPage() {
             {stravaBusy ? "Redirecting…" : "Connect Strava"}
           </Button>
         )}
-      </Card>
-
-      {/* LLM */}
-      <Card>
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">AI analysis (LLM)</h3>
-          <StatusBadge status={byProvider("llm")?.status} />
-        </div>
-        <p className="mb-3 text-sm text-ink-secondary">
-          Choose a provider for coach-style summaries. Keys are stored encrypted. Ollama runs a local model on
-          the Pi and needs no key.
-        </p>
-        <form
-          className="grid gap-3 sm:grid-cols-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            configureLLM.mutate({ provider, api_key: apiKey || undefined, model: model || undefined });
-          }}
-        >
-          <select
-            value={provider}
-            onChange={(e) => setProvider(e.target.value)}
-            className="rounded-lg border border-hairline bg-plane px-3 py-2 text-sm"
-          >
-            {LLM_PROVIDERS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-          <input
-            placeholder="Model (optional)"
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            className="rounded-lg border border-hairline bg-plane px-3 py-2 text-sm"
-          />
-          <input
-            type="password"
-            placeholder="API key"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            disabled={provider === "ollama" || provider === "none"}
-            className="rounded-lg border border-hairline bg-plane px-3 py-2 text-sm disabled:opacity-50"
-          />
-          <Button type="submit" disabled={configureLLM.isPending}>
-            Save
-          </Button>
-        </form>
       </Card>
 
       {/* Weather */}

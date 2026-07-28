@@ -21,8 +21,22 @@ SYSTEM = (
     "- Flag risk explicitly when the acute:chronic workload ratio (ACWR) is above "
     "1.3 (elevated) or 1.5 (high injury risk), or when weekly volume jumped more "
     "than ~10%.\n"
+    "- Use human units: pace as min:sec per km (e.g. 5:30/km), distance in km, "
+    "temperature in °C. Round sensibly — no false precision (say 39 m, not 39.29 m; "
+    "78% humidity, not 77.82%).\n"
     "- Keep it tight: ~150-220 words, a short opening read plus a few bullet points."
 )
+
+
+def format_pace(sec_per_km: float | None) -> str | None:
+    """Seconds/km -> 'm:ss/km' (the unit runners actually read)."""
+    if not sec_per_km or sec_per_km <= 0:
+        return None
+    m = int(sec_per_km // 60)
+    s = int(round(sec_per_km % 60))
+    if s == 60:
+        m, s = m + 1, 0
+    return f"{m}:{s:02d}/km"
 
 
 def _clean(obj: Any) -> Any:
@@ -44,14 +58,17 @@ def weekly_summary_prompt(
     recent: list[dict],
     recovery: dict | None,
 ) -> str:
+    def _round(v, n=0):
+        return round(v, n) if isinstance(v, (int, float)) else None
+
     recent_rows = [
         {
             "date": r.get("start_time"),
-            "km": round((r.get("distance_m") or 0) / 1000.0, 2),
-            "pace_s_per_km": r.get("avg_pace_s_per_km"),
-            "avg_hr": r.get("avg_hr"),
-            "avg_cadence": r.get("avg_cadence"),
-            "difficulty": r.get("difficulty_score"),
+            "km": round((r.get("distance_m") or 0) / 1000.0, 1),
+            "pace": format_pace(r.get("avg_pace_s_per_km")),
+            "avg_hr": _round(r.get("avg_hr")),
+            "avg_cadence": _round(r.get("avg_cadence")),
+            "difficulty": _round(r.get("difficulty_score")),
         }
         for r in recent[-8:]
     ]

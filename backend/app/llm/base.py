@@ -24,5 +24,6 @@ class DisabledProvider(LLMProvider):
 
     async def generate(self, system: str, prompt: str, max_tokens: int = 1024) -> str:
         raise RuntimeError(
-            "LLM analysis is not configured. Set a provider and API key on the Settings page."
+            "LLM analysis is not configured. Set LLM_PROVIDER and the matching API key "
+            "in the server environment (.env)."
         )

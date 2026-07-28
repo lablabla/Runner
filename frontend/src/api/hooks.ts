@@ -68,15 +68,6 @@ export function useConnectGarmin() {
   });
 }
 
-export function useConfigureLLM() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (body: { provider: string; api_key?: string; model?: string }) =>
-      api<IntegrationStatus>("/integrations/llm", { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["integrations"] }),
-  });
-}
-
 export function useDisconnect() {
   const qc = useQueryClient();
   return useMutation({

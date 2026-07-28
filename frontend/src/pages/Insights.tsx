@@ -42,8 +42,8 @@ export default function InsightsPage() {
       {!data?.length ? (
         <Card>
           <p className="text-sm text-ink-secondary">
-            No insights yet. Configure an LLM provider on the Settings page, then generate a weekly summary or
-            analyse an individual run from its detail page.
+            No insights yet. Generate a weekly summary above, or analyse an individual run from its
+            detail page.
           </p>
         </Card>
       ) : (

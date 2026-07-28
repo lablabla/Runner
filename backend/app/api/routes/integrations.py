@@ -12,11 +12,7 @@ from app.config import settings
 from app.core.crypto import decrypt_json, encrypt_json
 from app.database import get_db
 from app.models import IntegrationCredential, User
-from app.schemas.tracker import (
-    GarminConnectRequest,
-    IntegrationStatusOut,
-    LLMConfigRequest,
-)
+from app.schemas.tracker import GarminConnectRequest, IntegrationStatusOut
 from app.services import strava as strava_svc
 from app.services.garmin import GarminAuthError, GarminClient
 
@@ -127,18 +123,6 @@ async def disconnect(
     if cred:
         await db.delete(cred)
         await db.commit()
-
-
-@router.post("/llm", response_model=IntegrationStatusOut)
-async def configure_llm(
-    body: LLMConfigRequest,
-    current: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> IntegrationStatusOut:
-    payload = {"provider": body.provider, "api_key": body.api_key, "model": body.model}
-    status = "connected" if body.provider != "none" else "disconnected"
-    cred = await _upsert_cred(db, current.id, "llm", payload, status=status)
-    return IntegrationStatusOut(provider="llm", status=cred.status)
 
 
 # --- Strava OAuth ---------------------------------------------------------
