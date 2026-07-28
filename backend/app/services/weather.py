@@ -6,9 +6,18 @@ back to the user's configured home location.
 """
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime
 
 import httpx
+
+logger = logging.getLogger(__name__)
+
+
+def _resolved_provider() -> str:
+    """Normalise the configured provider name (tolerant of spelling)."""
+    p = (settings.weather_provider or "").lower().replace("-", "").replace("_", "").replace(" ", "")
+    return "visualcrossing" if p in ("visualcrossing", "vc") else "open-meteo"
 
 from app.config import settings
 
@@ -71,12 +80,23 @@ def _nearest_hour_index(times: list[str], target: datetime) -> int:
 
 
 async def fetch_weather_at(lat: float, lon: float, when: datetime) -> dict | None:
-    """Return a weather snapshot for a point/time. None on failure (best-effort)."""
-    if settings.weather_provider == "visualcrossing" and settings.visualcrossing_api_key:
-        vc = await _visual_crossing(lat, lon, when)
-        if vc is not None:
-            return vc
-        # fall through to Open-Meteo if VC fails
+    """Return a weather snapshot for a point/time. None on failure (best-effort).
+
+    The returned dict carries a ``source`` key (which provider/endpoint answered);
+    callers that persist it to the Weather model strip it first.
+    """
+    if _resolved_provider() == "visualcrossing":
+        if not settings.visualcrossing_api_key:
+            logger.warning("weather: provider=visualcrossing but VISUALCROSSING_API_KEY is empty — using Open-Meteo")
+        else:
+            vc, err = await _visual_crossing(lat, lon, when)
+            if vc is not None:
+                logger.info("weather: visualcrossing OK for %.3f,%.3f @ %s", lat, lon, when.isoformat())
+                return vc
+            logger.warning(
+                "weather: visualcrossing failed for %.3f,%.3f @ %s (%s) — falling back to Open-Meteo",
+                lat, lon, when.isoformat(), err,
+            )
     return await _open_meteo(lat, lon, when)
 
 
@@ -84,6 +104,7 @@ async def _open_meteo(lat: float, lon: float, when: datetime) -> dict | None:
     """Open-Meteo. Uses the high-res historical-forecast endpoint for past dates
     (no ~5-day ERA5 lag), the live forecast for today/future."""
     is_past = when.date() < date.today()
+    source = "open-meteo-historical" if is_past else "open-meteo-forecast"
     url = settings.open_meteo_historical_url if is_past else settings.open_meteo_forecast_url
     params = {
         "latitude": lat,
@@ -99,7 +120,10 @@ async def _open_meteo(lat: float, lon: float, when: datetime) -> dict | None:
             resp = await client.get(url, params=params)
             resp.raise_for_status()
             data = resp.json()
-    except (httpx.HTTPError, ValueError):
+    except httpx.HTTPError as exc:
+        logger.warning("weather: Open-Meteo request failed (%s): %s", source, exc)
+        return None
+    except ValueError:
         return None
 
     hourly = data.get("hourly") or {}
@@ -122,13 +146,14 @@ async def _open_meteo(lat: float, lon: float, when: datetime) -> dict | None:
         "precip_mm": val("precipitation"),
         "weather_code": int(code) if code is not None else None,
         "summary": summarise_code(int(code) if code is not None else None),
+        "source": source,
     }
 
 
-async def _visual_crossing(lat: float, lon: float, when: datetime) -> dict | None:
+async def _visual_crossing(lat: float, lon: float, when: datetime) -> tuple[dict | None, str | None]:
     """Visual Crossing Timeline API — blends station observations (more accurate
     humidity/conditions). Free tier covers full history + forecast. Matches the
-    exact hour by UTC epoch, so timezone handling is unambiguous."""
+    exact hour by UTC epoch. Returns (result, error_message)."""
     date_str = when.strftime("%Y-%m-%d")
     url = (
         "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/"
@@ -144,16 +169,19 @@ async def _visual_crossing(lat: float, lon: float, when: datetime) -> dict | Non
     try:
         async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.get(url, params=params)
-            resp.raise_for_status()
+            if resp.status_code != 200:
+                return None, f"HTTP {resp.status_code}: {resp.text[:180]}"
             data = resp.json()
-    except (httpx.HTTPError, ValueError):
-        return None
+    except httpx.HTTPError as exc:
+        return None, f"request error: {exc}"
+    except ValueError as exc:
+        return None, f"bad JSON: {exc}"
 
     hours = []
     for day in data.get("days") or []:
         hours.extend(day.get("hours") or [])
     if not hours:
-        return None
+        return None, "no hourly data in response"
     target = when.timestamp()
     best = min(hours, key=lambda h: abs((h.get("datetimeEpoch") or 0) - target))
     return {
@@ -165,4 +193,26 @@ async def _visual_crossing(lat: float, lon: float, when: datetime) -> dict | Non
         "precip_mm": best.get("precip"),
         "weather_code": None,
         "summary": best.get("conditions"),
+        "source": "visualcrossing",
+    }, None
+
+
+async def debug_weather_at(lat: float, lon: float, when: datetime) -> dict:
+    """Diagnostic: show what each provider returns and which one wins."""
+    out: dict = {
+        "lat": lat,
+        "lon": lon,
+        "when_utc": when.isoformat(),
+        "provider_setting": settings.weather_provider,
+        "resolved_provider": _resolved_provider(),
+        "visualcrossing_key_present": bool(settings.visualcrossing_api_key),
     }
+    if settings.visualcrossing_api_key:
+        vc, err = await _visual_crossing(lat, lon, when)
+        out["visualcrossing"] = vc if vc is not None else f"ERROR: {err}"
+    else:
+        out["visualcrossing"] = "skipped (no VISUALCROSSING_API_KEY set)"
+    out["open_meteo"] = await _open_meteo(lat, lon, when)
+    chosen = await fetch_weather_at(lat, lon, when)
+    out["chosen_source"] = (chosen or {}).get("source")
+    return out

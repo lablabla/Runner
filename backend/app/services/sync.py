@@ -264,6 +264,10 @@ async def _ensure_weather(db: AsyncSession, user: User, act: Activity, result: d
     data = await fetch_weather_at(lat, lon, act.start_time)
     if not data:
         return None
+    source = data.pop("source", None)  # not a Weather column; track for reporting
+    if source:
+        result.setdefault("weather_sources", {})
+        result["weather_sources"][source] = result["weather_sources"].get(source, 0) + 1
     weather = Weather(activity_id=act.id, **data)
     db.add(weather)
     act.weather = weather

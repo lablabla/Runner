@@ -51,3 +51,28 @@ async def get_activity(
     if not act:
         raise HTTPException(status_code=404, detail="Activity not found")
     return act
+
+
+@router.get("/{activity_id}/weather-debug")
+async def weather_debug(
+    activity_id: int,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Diagnostic: show what each weather provider returns for this run's point/time
+    and which one the app would use."""
+    from app.services.weather import debug_weather_at
+
+    act = await db.scalar(
+        select(Activity).where(Activity.id == activity_id, Activity.user_id == current.id)
+    )
+    if not act:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    lat = act.start_lat if act.start_lat is not None else current.home_lat
+    lon = act.start_lon if act.start_lon is not None else current.home_lon
+    if lat is None or lon is None:
+        raise HTTPException(status_code=400, detail="Activity has no GPS and no home location set")
+    result = await debug_weather_at(lat, lon, act.start_time)
+    result["activity_start_utc"] = act.start_time.isoformat()
+    result["coords_from"] = "gps" if act.start_lat is not None else "home"
+    return result

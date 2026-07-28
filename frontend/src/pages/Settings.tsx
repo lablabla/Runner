@@ -209,6 +209,10 @@ function WeatherCard() {
         {resync.isSuccess && (
           <span className="text-sm" style={{ color: "var(--status-good)" }}>
             ✓ {resync.data.weather_enriched} run(s) updated
+            {Object.keys(resync.data.weather_sources ?? {}).length > 0 &&
+              ` — via ${Object.entries(resync.data.weather_sources)
+                .map(([k, v]) => `${k} (${v})`)
+                .join(", ")}`}
           </span>
         )}
         {resync.isError && <ErrorNote message={(resync.error as Error).message} />}

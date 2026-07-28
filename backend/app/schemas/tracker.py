@@ -103,4 +103,5 @@ class SyncResult(BaseModel):
     activities_updated: int = 0
     daily_metrics_upserted: int = 0
     weather_enriched: int = 0
+    weather_sources: dict[str, int] = {}
     errors: list[str] = []

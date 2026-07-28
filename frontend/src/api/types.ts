@@ -121,5 +121,6 @@ export interface SyncResult {
   activities_updated: number;
   daily_metrics_upserted: number;
   weather_enriched: number;
+  weather_sources: Record<string, number>;
   errors: string[];
 }
