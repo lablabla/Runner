@@ -71,13 +71,20 @@ def _nearest_hour_index(times: list[str], target: datetime) -> int:
 
 
 async def fetch_weather_at(lat: float, lon: float, when: datetime) -> dict | None:
-    """Return a weather snapshot dict for a given point and time.
+    """Return a weather snapshot for a point/time. None on failure (best-effort)."""
+    if settings.weather_provider == "visualcrossing" and settings.visualcrossing_api_key:
+        vc = await _visual_crossing(lat, lon, when)
+        if vc is not None:
+            return vc
+        # fall through to Open-Meteo if VC fails
+    return await _open_meteo(lat, lon, when)
 
-    Chooses the archive or forecast endpoint depending on whether ``when`` is in
-    the past. Returns None on failure (weather is best-effort enrichment).
-    """
+
+async def _open_meteo(lat: float, lon: float, when: datetime) -> dict | None:
+    """Open-Meteo. Uses the high-res historical-forecast endpoint for past dates
+    (no ~5-day ERA5 lag), the live forecast for today/future."""
     is_past = when.date() < date.today()
-    url = settings.open_meteo_archive_url if is_past else settings.open_meteo_forecast_url
+    url = settings.open_meteo_historical_url if is_past else settings.open_meteo_forecast_url
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -115,4 +122,47 @@ async def fetch_weather_at(lat: float, lon: float, when: datetime) -> dict | Non
         "precip_mm": val("precipitation"),
         "weather_code": int(code) if code is not None else None,
         "summary": summarise_code(int(code) if code is not None else None),
+    }
+
+
+async def _visual_crossing(lat: float, lon: float, when: datetime) -> dict | None:
+    """Visual Crossing Timeline API — blends station observations (more accurate
+    humidity/conditions). Free tier covers full history + forecast. Matches the
+    exact hour by UTC epoch, so timezone handling is unambiguous."""
+    date_str = when.strftime("%Y-%m-%d")
+    url = (
+        "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/"
+        f"timeline/{lat},{lon}/{date_str}"
+    )
+    params = {
+        "unitGroup": "metric",
+        "include": "hours",
+        "key": settings.visualcrossing_api_key,
+        "contentType": "json",
+        "elements": "datetimeEpoch,temp,feelslike,humidity,windspeed,windgust,precip,conditions,icon",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+    except (httpx.HTTPError, ValueError):
+        return None
+
+    hours = []
+    for day in data.get("days") or []:
+        hours.extend(day.get("hours") or [])
+    if not hours:
+        return None
+    target = when.timestamp()
+    best = min(hours, key=lambda h: abs((h.get("datetimeEpoch") or 0) - target))
+    return {
+        "temp_c": best.get("temp"),
+        "apparent_temp_c": best.get("feelslike"),
+        "humidity_pct": best.get("humidity"),
+        "wind_speed_kmh": best.get("windspeed"),
+        "wind_gust_kmh": best.get("windgust"),
+        "precip_mm": best.get("precip"),
+        "weather_code": None,
+        "summary": best.get("conditions"),
     }

@@ -7,6 +7,7 @@ import {
   useDisconnect,
   useIntegrations,
   useMe,
+  useResyncWeather,
 } from "../api/hooks";
 import { Badge, Button, Card, ErrorNote, Spinner } from "../components/ui";
 import { dateTime } from "../format";
@@ -177,6 +178,9 @@ export default function SettingsPage() {
         </form>
       </Card>
 
+      {/* Weather */}
+      <WeatherCard />
+
       {/* Profile / home location */}
       <HomeLocationCard
         lat={me.data?.home_lat ?? null}
@@ -184,6 +188,32 @@ export default function SettingsPage() {
         onSaved={() => me.refetch()}
       />
     </div>
+  );
+}
+
+function WeatherCard() {
+  const resync = useResyncWeather();
+  return (
+    <Card>
+      <h3 className="mb-1 text-sm font-semibold">Weather</h3>
+      <p className="mb-3 text-sm text-ink-secondary">
+        Runs are enriched with weather at their start time and location. The provider is set on the
+        server (<code>WEATHER_PROVIDER</code>): Open-Meteo (free, model-based) or Visual Crossing
+        (free key, blends station observations — more accurate). After changing it, re-fetch weather
+        for your existing runs.
+      </p>
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" onClick={() => resync.mutate()} disabled={resync.isPending}>
+          {resync.isPending ? "Refreshing…" : "Refresh weather for all runs"}
+        </Button>
+        {resync.isSuccess && (
+          <span className="text-sm" style={{ color: "var(--status-good)" }}>
+            ✓ {resync.data.weather_enriched} run(s) updated
+          </span>
+        )}
+        {resync.isError && <ErrorNote message={(resync.error as Error).message} />}
+      </div>
+    </Card>
   );
 }
 

@@ -180,7 +180,7 @@ http://<pi-ip>:8080          e.g. http://192.168.1.50:8080
 | **Garmin** | `python-garminconnect` (unofficial) | Logs in with your Garmin credentials (encrypted at rest); caches refreshable tokens. Richest source: activities + sleep/HRV/steps/stress/body battery/readiness. |
 | **Strava** | Official OAuth2 | Optional. Needs `STRAVA_CLIENT_ID/SECRET`. Personal-use only per Strava's API terms. |
 | **Runna** | via Garmin/Strava + PDF | No public API. Completed Runna runs are auto-tagged; import the forward plan from a PDF or add it manually. |
-| **Weather** | Open-Meteo | Free, keyless. Historical archive for past runs, forecast for the plan. |
+| **Weather** | Open-Meteo (default) or Visual Crossing | Open-Meteo is free/keyless (model-based). Visual Crossing (free key) blends real station observations — more accurate humidity/conditions. Set `WEATHER_PROVIDER` + `VISUALCROSSING_API_KEY`, then **Settings → Refresh weather**. |
 | **LLM** | Claude / OpenAI / Gemini / Ollama | Pluggable; configured per-user in Settings or globally via env. |
 
 **Heads-up on Garmin:** `python-garminconnect` is community-maintained and can

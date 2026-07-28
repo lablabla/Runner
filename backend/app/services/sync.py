@@ -11,7 +11,7 @@ import logging
 import time
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -188,6 +188,26 @@ async def _upsert_daily_metric(db: AsyncSession, user_id: int, day: date, data: 
     else:
         db.add(DailyMetric(user_id=user_id, date=day, **fields))
     result["daily_metrics_upserted"] += 1
+
+
+async def refresh_weather(db: AsyncSession, user: User) -> dict:
+    """Delete cached weather for the user's activities and re-fetch + re-score.
+
+    Use after changing weather provider/settings so existing runs pick up the
+    corrected data.
+    """
+    result = {
+        "activities_added": 0,
+        "activities_updated": 0,
+        "daily_metrics_upserted": 0,
+        "weather_enriched": 0,
+        "errors": [],
+    }
+    act_ids = select(Activity.id).where(Activity.user_id == user.id)
+    await db.execute(delete(Weather).where(Weather.activity_id.in_(act_ids)))
+    await db.commit()
+    await _enrich_and_score(db, user, result)
+    return result
 
 
 async def _enrich_and_score(db: AsyncSession, user: User, result: dict) -> None:

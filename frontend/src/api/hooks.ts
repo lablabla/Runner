@@ -51,6 +51,14 @@ export function useSync() {
   });
 }
 
+export function useResyncWeather() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<SyncResult>("/sync/weather", { method: "POST" }),
+    onSuccess: () => qc.invalidateQueries(),
+  });
+}
+
 export function useConnectGarmin() {
   const qc = useQueryClient();
   return useMutation({

@@ -36,9 +36,17 @@ class Settings(BaseSettings):
     # Public URL of this app used for the OAuth callback, e.g. https://tracker.example.com
     public_base_url: str = "http://localhost:8000"
 
-    # --- Weather (Open-Meteo, keyless) ---
-    open_meteo_archive_url: str = "https://archive-api.open-meteo.com/v1/archive"
+    # --- Weather ---
+    # Provider: "open-meteo" (free, keyless, model-based) or "visualcrossing"
+    # (free key, blends station observations — more accurate, better for humidity/
+    # conditions). Get a free key at https://www.visualcrossing.com/weather-api
+    weather_provider: str = "open-meteo"
+    visualcrossing_api_key: str = ""
+
     open_meteo_forecast_url: str = "https://api.open-meteo.com/v1/forecast"
+    # High-resolution archived forecast (no ~5-day ERA5 lag) — used for past dates.
+    open_meteo_historical_url: str = "https://historical-forecast-api.open-meteo.com/v1/forecast"
+    open_meteo_archive_url: str = "https://archive-api.open-meteo.com/v1/archive"
 
     # --- LLM (pluggable) ---
     llm_provider: str = "none"  # none | anthropic | openai | gemini | ollama
